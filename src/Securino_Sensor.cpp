@@ -19,8 +19,8 @@ const uint8_t ce_pin = 9;
 const uint8_t csn_pin = 10;
 
 // Sleep cycles
-const uint8_t sleep_cycles_armed = 12;
-const period_t sleep_cycle_armed = SLEEP_2S;
+const uint8_t sleep_cycles_armed = 24;
+const period_t sleep_cycle_armed = SLEEP_1S;
 const uint8_t sleep_cycles_disarmed = 3;
 const period_t sleep_cycle_disarmed = SLEEP_8S;
 
