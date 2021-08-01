@@ -18,14 +18,6 @@ Manages the radio communications using the rf24 library.
 
 namespace sensor
 {
-	// Response of the main device.
-	typedef enum response_t
-	{
-		response_error = -1,
-		response_disarmed = 0,
-		response_armed = 1,
-		response_wrong_device = 2
-	} response_t;
 	// Radio constants
 	const uint64_t addresses[2] = {0xABCDABCD71LL, 0x544d52687CLL};
 	const uint8_t channel = 125; // Sets the frequency to 2525Mhz, above the Wifi range
@@ -44,7 +36,7 @@ namespace sensor
 		// Methods
 		static RadioManager *getInstance();
 		void init(uint8_t ce_pin, uint8_t csn_pin);
-		response_t send(const sensortypes::SensorMessage &message, bool hasNoTimeout);
+		sensortypes::SensorAck send(const sensortypes::SensorMessage &message, bool hasNoTimeout);
 		bool wasSent();
 
 	private:

@@ -6,7 +6,7 @@
 #include "common/Timer.h"
 #include "common/sensortypes.h"
 
-#define DEBUG
+//#define DEBUG
 
 #pragma region Constants
 // Pin constants
@@ -105,7 +105,7 @@ void loop()
 		bindSensor();
 	}
 
-	// For triggered state, send message and change arm status to avoid more triggers, else just ping
+	// For triggered state, send message and change arm status to avoid spamming, else just ping
 	if (g_state == sensortypes::state_triggered)
 	{
 		sendData(true);
@@ -218,7 +218,7 @@ void changeArmStatus(bool new_status)
 			// Clear interrupt flag for pin D2
 			EIFR |= (1 << INT0);
 			// And attach an interrupt that sets state to triggered if movement is detected.
-			attachInterrupt(digitalPinToInterrupt(sensor_pin), sensorTriggerEvent, FALLING);
+			attachInterrupt(digitalPinToInterrupt(sensor_pin), sensorTriggerEvent, RISING);
 		}
 		else
 		{
@@ -278,38 +278,27 @@ void sendData(bool hasNoTimeout)
 {
 	// Update the state and send the message
 	g_message.state = (sensortypes::sensor_state_t)g_state;
-	sensor::response_t response = g_radio->send(g_message, hasNoTimeout);
-	// Change state based on response
-	switch (response)
+	sensortypes::SensorAck response = g_radio->send(g_message, hasNoTimeout);
+
+	// If the response is not empty and both the parent device id and session id match
+	if (!(response.parent_device_id == 0 && response.session_id == 0 && response.sensors_to_arm == 0) && response.parent_device_id == g_message.parent_device_id && response.session_id == g_message.session_id)
 	{
-	case sensor::response_error:
-		// Do nothing for error
-		break;
-	case sensor::response_disarmed:
-		changeArmStatus(false);
-		break;
-	case sensor::response_armed:
-		changeArmStatus(true);
-		break;
-	case sensor::response_wrong_device:
-		// Do nothing for wrong device
-		break;
+		// 0 since the types are either 1 or two, will disarm all sensors since 0 >= 1 or 2 is false in either case
+		// 1 will arm only the magnet sensors since 1 >= 1 or 2 is true for the magnet sensors (int 1)
+		// 2 will arm all sensors since 2 >= 1 or 2 is true for both types of sensors with id 1 and 2
+		if (response.sensors_to_arm >= g_message.type)
+		{
+			changeArmStatus(true);
+		}
+		else
+		{
+			changeArmStatus(false);
+		}
 	}
+
 	// Blink for radio lost if not on setup mode (only one led)
 	if (!g_radio->wasSent() && !g_setup->m_setup)
 	{
 		blinkLed(signal_lost_blinks);
 	}
-
-#ifdef DEBUG
-	// Ack 0 is disarmed, 1 is armed, 255 is blank payload
-	// Ack 72 is collision during ack on NANO, 200 on MINI
-	Serial.print("Response: ");
-	Serial.print(response);
-	Serial.print(", Armed: ");
-	Serial.print(g_is_armed);
-	Serial.print(", State: ");
-	Serial.println(g_state);
-	Serial.flush();
-#endif
 }
